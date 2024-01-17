@@ -28,7 +28,7 @@ public class AuctionHouse {
         }
     }
 
-    public List<Auction> getAuctions() {
+    public static List<Auction> getAuctions() {
         return auctions;
     }
 

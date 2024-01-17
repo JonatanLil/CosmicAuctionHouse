@@ -4,6 +4,7 @@ import me.panda.cosmicauctionhouse.CosmicAuctionHouse;
 import me.panda.cosmicauctionhouse.engine.AuctionHouse;
 import me.panda.cosmicauctionhouse.engine.bp.Auction;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -43,14 +44,27 @@ public class AuctionHouseCommand implements CommandExecutor {
         Inventory gui = Bukkit.createInventory(null, 9 * 3, "Auction House");
 
         // Get the list of auctions
-        AuctionHouse auctionHouse = plugin.getAuctionHouse();
+        List<Auction> auctions = AuctionHouse.getAuctions();
 
-        List<Auction> auctions = auctionHouse.getAuctions();
+        if (auctions.isEmpty()) {
+            player.sendMessage("There are no auctions available at the moment.");
+            return;
+        }
 
         // Add auction items to the GUI
         for (Auction auction : auctions) {
+            if (auction.getAuctionedItem() == null || auction.getAuctionedItem().getType() == Material.AIR) {
+                // Skip auctions with invalid items
+                continue;
+            }
+
             ItemStack auctionItem = auction.getAuctionedItem().clone();
             ItemMeta itemMeta = auctionItem.getItemMeta();
+
+            if (itemMeta == null) {
+                // Skip auctions with invalid item meta
+                continue;
+            }
 
             // Add price and seller to the lore
             List<String> lore = itemMeta.getLore();
@@ -66,8 +80,14 @@ public class AuctionHouseCommand implements CommandExecutor {
             gui.addItem(auctionItem);
         }
 
+        if (gui.firstEmpty() == -1) {
+            player.sendMessage("The Auction House is full. Please try again later.");
+            return;
+        }
+
         player.openInventory(gui);
     }
+
 
 
 }
