@@ -2,15 +2,20 @@ package me.panda.cosmicauctionhouse.engine.db;
 
 import me.panda.cosmicauctionhouse.engine.bp.Auction;
 import me.panda.cosmicauctionhouse.engine.utils.ItemUtils;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class AuctionData {
+
+    private static final Logger logger = LoggerFactory.getLogger(AuctionData.class);
 
     private Connection connection;
     private final JavaPlugin plugin;
@@ -22,8 +27,7 @@ public class AuctionData {
             connection = DriverManager.getConnection("jdbc:sqlite:" + plugin.getDataFolder() + "/" + dbName);
             createTable();
         } catch (ClassNotFoundException | SQLException e) {
-            plugin.getSLF4JLogger().error("Problem regarding data table or connection to db");
-            e.printStackTrace();
+            logger.error("Problem regarding data table or connection to db", e);
         }
     }
 
@@ -31,13 +35,13 @@ public class AuctionData {
         return connection;
     }
 
-    public void closeConnection () {
+    public void closeConnection() {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
             }
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Error closing the connection", e);
         }
     }
 
@@ -48,13 +52,14 @@ public class AuctionData {
                 + "price INTEGER, "
                 + "seller VARCHAR(255), "
                 + "bought BOOLEAN, "
-                + "buyer VARCHAR(255)"
+                + "buyer VARCHAR(255),"
+                + "timeLeft INTEGER"
                 + ")";
 
         try (PreparedStatement statement = connection.prepareStatement(createTableSQL)) {
             statement.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Error creating table", e);
         }
     }
 
@@ -76,17 +81,21 @@ public class AuctionData {
 
                 ItemStack itemToAuction = ItemUtils.deserializeItemStack(itemToAuctionData);
 
-                Player seller = plugin.getServer().getPlayerExact(sellerName);
-                Player buyer = (buyerName != null) ? plugin.getServer().getPlayerExact(buyerName) : null;
+                OfflinePlayer seller = plugin.getServer().getPlayerExact(sellerName);
+                OfflinePlayer buyer = (buyerName != null) ? plugin.getServer().getPlayerExact(buyerName) : null;
 
-                Auction auction = new Auction(itemToAuction, price, seller);
+                long timeLeft = resultSet.getLong("timeLeft");
+
+                Auction auction = new Auction(itemToAuction, price, seller, timeLeft);
                 auction.setBuyer(buyer);
                 auction.setBought(bought);
                 auctions.add(auction);
+                auction.setTimeLeft(timeLeft);
+
             }
 
         } catch (SQLException e) {
-            e.printStackTrace();
+            logger.error("Error retrieving auctions from the database", e);
         }
 
         return auctions;
@@ -99,12 +108,11 @@ public class AuctionData {
         try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSQL)) {
             deleteStatement.executeUpdate();
         } catch (SQLException e) {
-            e.printStackTrace();
-            plugin.getSLF4JLogger().warn("Problem deleting existing auctions");
+            logger.warn("Problem deleting existing auctions", e);
         }
 
         // Insert new data
-        String insertSQL = "INSERT INTO Auctions (itemToAuction, price, seller, bought, buyer) VALUES (?, ?, ?, ?, ?)";
+        String insertSQL = "INSERT INTO Auctions (itemToAuction, price, seller, bought, buyer, timeLeft) VALUES (?, ?, ?, ?, ?, ?)";
 
         try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL)) {
             for (Auction auction : auctions) {
@@ -113,6 +121,7 @@ public class AuctionData {
                 insertStatement.setString(3, auction.getSeller().getName());
                 insertStatement.setBoolean(4, auction.isBought());
                 insertStatement.setString(5, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
+                insertStatement.setLong(6, auction.getTimeLeft()); // Add the remaining time
 
                 insertStatement.addBatch();
             }
@@ -120,11 +129,7 @@ public class AuctionData {
             insertStatement.executeBatch();
 
         } catch (SQLException e) {
-            e.printStackTrace();
-            plugin.getSLF4JLogger().warn("Problem saving existing auctions");
+            logger.warn("Problem saving existing auctions", e);
         }
     }
-
-
-
 }

@@ -15,6 +15,14 @@ public final class CosmicAuctionHouse extends JavaPlugin {
     @Override
     public void onEnable() {
         INSTANCE = this;
+        // Create data folder
+        if (!getDataFolder().exists()) {
+            getDataFolder().mkdir();
+        }
+
+        // Config stuff
+        saveDefaultConfig();
+        reloadConfig();
 
         try {
             auctionHouse = new AuctionHouse();
@@ -28,6 +36,11 @@ public final class CosmicAuctionHouse extends JavaPlugin {
     @Override
     public void onDisable() {
         // Plugin shutdown logic
+        try {
+            auctionHouse.closeConnection();
+        } catch (Exception e) {
+            getSLF4JLogger().warn("Problem disabling the auction house");
+        }
     }
 
     public AuctionHouse getAuctionHouse() {
