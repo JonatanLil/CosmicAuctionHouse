@@ -15,7 +15,7 @@ public class AuctionHouse {
     private JavaPlugin plugin = CosmicAuctionHouse.INSTANCE;
     private AuctionData db;
     private static List<Auction> auctions;
-    private static List<Auction> historyList = new ArrayList<>();
+    private static List<Auction> historyList;
 
     public AuctionHouse() {
         try {
@@ -26,6 +26,7 @@ public class AuctionHouse {
 
         try {
             auctions = db.getAuctions();
+            historyList = db.getHistoryAuctions();
         } catch (Exception e) {
             plugin.getSLF4JLogger().warn("Problem retrieving auctions");
         }
@@ -33,6 +34,9 @@ public class AuctionHouse {
 
     public List<Auction> getAuctions() {
         return auctions;
+    }
+    public List<Auction> getHistoryAuctions() {
+        return historyList;
     }
 
     public AuctionData getDb() {
@@ -42,6 +46,7 @@ public class AuctionHouse {
     public void closeConnection() {
         if (!auctions.isEmpty()) {
             db.saveAuctions(auctions);
+            db.saveHistoryAuctions(historyList);
             db.closeConnection();
         }
         else {
@@ -50,11 +55,11 @@ public class AuctionHouse {
         }
     }
 
-    public static void addHistoryAuction(Auction auction) {
+    public void addHistoryAuction(Auction auction) {
         historyList.add(auction);
     }
 
-    public static void removeHistoryAuction(Auction auction) {
+    public void removeHistoryAuction(Auction auction) {
         historyList.remove(auction);
     }
 

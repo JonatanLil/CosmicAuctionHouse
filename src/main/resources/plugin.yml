@@ -7,5 +7,3 @@ commands:
     description: "Opens up the auctionhouse GUI"
     aliases:
       - AuctionHouse
-      - auctionhouse
-      - auctionHouse

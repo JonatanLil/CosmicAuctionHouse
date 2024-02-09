@@ -4,14 +4,13 @@ import me.panda.cosmicauctionhouse.CosmicAuctionHouse;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.scheduler.BukkitRunnable;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 public class Auction {
 
@@ -33,6 +32,14 @@ public class Auction {
 
         startExpirationTimer(initialTime);
     }
+
+    public Auction(ItemStack itemToAuction, int price, OfflinePlayer seller) {
+        this.itemToAuction = itemToAuction;
+        this.price = price;
+        this.seller = seller;
+        this.expired = true;
+    }
+
 
     public ItemStack getAuctionedItem() {
         return  itemToAuction;
@@ -79,20 +86,21 @@ public class Auction {
             @Override
             public void run() {
                 // Check if the auction is not already bought
-                if (!bought) {
+                //System.out.println("RUNNABLE");
+                if (!bought && !expired) {
+                    //System.out.println("NOT BOUGHT");
                     if (timeLeft <= 0) {
                         // Set the expired flag to true
                         expired = true;
+                        //System.out.println("EXPIRED");
                         // Cancel the task since the auction has expired
                         this.cancel();
                     } else {
                         // Update the time left
                         timeLeft--;
-                        // Update the lore dynamically
-                        updateDisplayItemLore(timeLeft);
                     }
                 } else {
-                    // Auction was bought, cancel the task
+                    // Auction was bought/removed, cancel the task
                     this.cancel();
                 }
             }
@@ -100,7 +108,7 @@ public class Auction {
     }
 
     public String getSellerName() {
-        return (seller != null) ? seller.getName() : "Unknown Seller";
+        return (seller != null) ? seller.getName() : "ᴜɴᴋɴᴏᴡɴ sᴇʟʟᴇʀ";
     }
 
     public long getTimeLeft() {
@@ -115,30 +123,34 @@ public class Auction {
         return String.format("%02d:%02d:%02d", hours, minutes, remainingSeconds);
     }
 
-    private void updateDisplayItemLore(long timeLeft) {
+    public void updateDisplayItemLore(long timeLeft, Player player, Inventory inventory, int slot) {
+        //System.out.println("TESTING INSIDE UpdateDisplayItem method");
         ItemStack displayItem = getDisplayItem();
         ItemMeta itemMeta = displayItem.getItemMeta();
-
+        itemMeta.lore().clear();
         // Remove previous countdown lore
         List<String> lore = new ArrayList<>();
         for (String line : itemMeta.getLore()) {
-            if (!line.contains("Time left:")) {
+            if (!line.contains("ᴛɪᴍᴇ ʟᴇғᴛ:")) {
                 lore.add(line);
             }
         }
 
+
         // Add updated countdown lore
-        lore.add(ChatColor.GOLD + "Time left: " + ChatColor.YELLOW + formatTime(timeLeft));
+        lore.add(ChatColor.GOLD + "ᴛɪᴍᴇ ʟᴇғᴛ: " + ChatColor.YELLOW + formatTime(timeLeft));
 
         // Update the lore
         itemMeta.setLore(lore);
         displayItem.setItemMeta(itemMeta);
+        inventory.setItem(slot, displayItem);
     }
 
     public ItemStack getDisplayItem() {
         if (this.displayItem != null) {
             return this.displayItem;
         }
+        //System.out.println("DisplayItem = null");
 
         this.displayItem = itemToAuction.clone();
         ItemMeta itemMeta = displayItem.getItemMeta();
@@ -148,14 +160,14 @@ public class Auction {
         if (lore == null) {
             lore = new ArrayList<>();
         }
+
         lore.add("");
         lore.add(ChatColor.WHITE + "--------------------------------");
-        lore.add(ChatColor.YELLOW + "Click item to buy!");
-        lore.add(ChatColor.GOLD + "Price: " + ChatColor.YELLOW + getPrice());
-        //lore.add(ChatColor.GOLD + "Time left: " + ChatColor.YELLOW + formatTime(24 * 60 * 60)); // Initial value
-        lore.add(ChatColor.GOLD + "Seller: " + ChatColor.YELLOW + getSellerName());
+        lore.add(ChatColor.YELLOW + "ᴄʟɪᴄᴋ ɪᴛᴇᴍ ᴛᴏ ʙᴜʏ!");
+        lore.add(ChatColor.GOLD + "ᴘʀɪᴄᴇ: " + ChatColor.YELLOW + getPrice());
+        lore.add(ChatColor.GOLD + "sᴇʟʟᴇʀ: " + ChatColor.YELLOW + getSellerName());
         lore.add(ChatColor.WHITE + "--------------------------------");
-        lore.add(ChatColor.GOLD + "Time left: " + ChatColor.YELLOW + getTimeLeft()); // Initial value
+        lore.add(ChatColor.GOLD + "ᴛɪᴍᴇ ʟᴇғᴛ: " + ChatColor.YELLOW + getTimeLeft()); // Initial value
 
 
         itemMeta.setLore(lore);

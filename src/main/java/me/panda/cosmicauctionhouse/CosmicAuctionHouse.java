@@ -1,6 +1,7 @@
 package me.panda.cosmicauctionhouse;
 
 import me.panda.cosmicauctionhouse.engine.AuctionHouse;
+import me.panda.cosmicauctionhouse.engine.events.listener.AuctionPurchaseListener;
 import me.panda.cosmicauctionhouse.engine.gui.AuctionHouseCommand;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -31,6 +32,8 @@ public final class CosmicAuctionHouse extends JavaPlugin {
         }
 
         Objects.requireNonNull(getCommand("ah")).setExecutor(new AuctionHouseCommand(this));
+
+        getServer().getPluginManager().registerEvents(new AuctionPurchaseListener(this), this);
     }
 
     @Override
