@@ -12,8 +12,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class Auction {
-
+public class AuctionItem {
     private static final AtomicInteger idGenerator = new AtomicInteger(0);
 
     private int id; // Added id variable
@@ -27,9 +26,7 @@ public class Auction {
     private ItemStack displayItem;
     private boolean expiredTask;
 
-
-
-    public Auction(ItemStack itemToAuction, int price, OfflinePlayer seller, long initialTime) {
+    public AuctionItem(ItemStack itemToAuction, int price, OfflinePlayer seller, long initialTime) {
         this.itemToAuction = itemToAuction;
         this.price = price;
         this.seller = seller;
@@ -42,7 +39,7 @@ public class Auction {
         startExpirationTimer(initialTime);
     }
 
-    public Auction(ItemStack itemToAuction, int price, OfflinePlayer seller) {
+    public AuctionItem(ItemStack itemToAuction, int price, OfflinePlayer seller) {
         this.itemToAuction = itemToAuction;
         this.price = price;
         this.seller = seller;
@@ -195,10 +192,5 @@ public class Auction {
         displayItem.setItemMeta(itemMeta);
 
         return this.displayItem;
-    }
-
-    @Override
-    public String toString() {
-        return "\n Auction, ID : " + id + "\n seller: " + seller.getName() + ", expired: " + expired + ", price: " + price + ", Material: " + itemToAuction.getType();
     }
 }

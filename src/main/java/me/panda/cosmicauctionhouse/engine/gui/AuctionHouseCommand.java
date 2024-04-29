@@ -1,10 +1,10 @@
 package me.panda.cosmicauctionhouse.engine.gui;
 
-import com.sun.tools.javac.jvm.Items;
 import me.panda.cosmicauctionhouse.CosmicAuctionHouse;
 import me.panda.cosmicauctionhouse.engine.AuctionHouse;
 import me.panda.cosmicauctionhouse.engine.bp.Auction;
-import me.panda.cosmicauctionhouse.engine.events.AuctionPurchaseEvent;
+import net.milkbowl.vault.economy.Economy;
+import net.milkbowl.vault.economy.EconomyResponse;
 import org.apache.commons.lang3.StringUtils;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -23,6 +23,8 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
+
+import static me.panda.cosmicauctionhouse.CosmicAuctionHouse.getEconomy;
 
 public class AuctionHouseCommand implements CommandExecutor {
 
@@ -45,9 +47,12 @@ public class AuctionHouseCommand implements CommandExecutor {
         Player player = (Player) sender;
 
         if (cmd.getName().equalsIgnoreCase("ah")) {
-            if (args.length == 3 && args[0].equals("sell")) {
-                int price = 0;
-                int amount = 0;
+            if (args.length == 0) {
+                openAuctionGUI(player);
+                return true; // Return true here to indicate that the command was handled successfully
+            } else if (args.length == 3 && args[0].equals("sell")) {
+                int price;
+                int amount;
                 ItemStack item;
 
                 try {
@@ -83,13 +88,14 @@ public class AuctionHouseCommand implements CommandExecutor {
                 item.setAmount(heldAmount - amount);
 
                 player.sendMessage("ᴀᴜᴄᴛɪᴏɴ ᴄʀᴇᴀᴛᴇᴅ ғᴏʀ " + amount + " ɪᴛᴇᴍ(s) ᴀᴛ ᴛʜᴇ ᴘʀɪᴄᴇ ᴏғ " + price + " ᴇᴀᴄʜ.");
-            } else if (args.length == 0) {
-                openAuctionGUI(player);
+            } else {
+                player.sendMessage("Invalid usage. Correct usage: /ᴀʜ sᴇʟʟ <ᴘʀɪᴄᴇ> <ᴀᴍᴏᴜɴᴛ>");
+                return true;
             }
-            return true;
         }
         return false;
     }
+
 
     private void openAuctionGUI(Player player) {
         // Create a map to store auctions by material
@@ -98,10 +104,12 @@ public class AuctionHouseCommand implements CommandExecutor {
         // Get the list of auctions
         List<Auction> auctions = auctionHouse.getAuctions();
 
+        /*
         if (auctions == null || auctions.isEmpty()) {
             player.sendMessage("ᴛʜᴇʀᴇ ᴀʀᴇ ɴᴏ ᴀᴜᴄᴛɪᴏɴs ᴀᴠᴀɪʟᴀʙʟᴇ ᴀᴛ ᴛʜᴇ ᴍᴏᴍᴇɴᴛ.");
             return;
         }
+         */
 
         // Organize auctions by material
         for (Auction auction : auctions) {
@@ -145,7 +153,7 @@ public class AuctionHouseCommand implements CommandExecutor {
         prevPageItem.setItemMeta(prevPageMeta);
         mainGUI.setItem(9 * 6 - 6, prevPageItem);
 
-        ItemStack historyAuctionItem = new ItemStack(Material.WRITTEN_BOOK);
+        ItemStack historyAuctionItem = new ItemStack(Material.KNOWLEDGE_BOOK);
         ItemMeta historyMeta = historyAuctionItem.getItemMeta();
         historyMeta.setDisplayName(ChatColor.YELLOW + "" + ChatColor.BOLD + "ᴀᴜᴄᴛɪᴏɴ ʜɪsᴛᴏʀʏ");
         List<String> historyMetaLore = new ArrayList<>(); // Initialize the list
@@ -264,7 +272,7 @@ public class AuctionHouseCommand implements CommandExecutor {
                                 Material selectedMaterial = event.getCurrentItem().getType();
                                 openSubAuctionGUI(player, selectedMaterial);
                             }
-                        } else if (event.getCurrentItem().getType().equals(Material.WRITTEN_BOOK) && event.getCurrentItem().getItemMeta().getDisplayName().equals(ChatColor.YELLOW + "" + ChatColor.BOLD + "ᴀᴜᴄᴛɪᴏɴ ʜɪsᴛᴏʀʏ")) {
+                        } else if (event.getCurrentItem().getType().equals(Material.KNOWLEDGE_BOOK) && event.getCurrentItem().getItemMeta().getDisplayName().equals(ChatColor.YELLOW + "" + ChatColor.BOLD + "ᴀᴜᴄᴛɪᴏɴ ʜɪsᴛᴏʀʏ")) {
                             openHistoryAuctions(player);
                         } else if (event.getCurrentItem().getType().equals(Material.DIAMOND) && event.getCurrentItem().getItemMeta().getDisplayName().equals(ChatColor.YELLOW + "" + ChatColor.BOLD + "ʏᴏᴜʀ ᴀᴜᴄᴛɪᴏɴs")) {
                             openYourAuctions(player);
@@ -324,12 +332,13 @@ public class AuctionHouseCommand implements CommandExecutor {
                 for (int slot : slotAuctionMap.keySet()) {
                     Auction auction = slotAuctionMap.get(slot);
                     if (!auction.isBought()) {
-                        auction.updateDisplayItemLore(auction.getTimeLeft(), player, subGUI, slot);
+                        auction.updateDisplayItemLore(auction.getTimeLeft(), subGUI, slot);
                     }
                 }
                 //player.sendMessage("Updated Inventory");
             }
         }.runTaskTimer(CosmicAuctionHouse.INSTANCE, 0, period);
+
 
         // Implement the InventoryClickListener for the sub-GUI
         Bukkit.getPluginManager().registerEvents(new Listener() {
@@ -377,11 +386,25 @@ public class AuctionHouseCommand implements CommandExecutor {
 
             // Add the purchased item to the player's inventory
             player.getInventory().addItem(selectedAuction.getAuctionedItem());
-            // ADD HOOK INTO VAULT
+
+            Economy econ = getEconomy();
+
+            player.sendMessage(String.format("You have %s", econ.format(econ.getBalance(player.getName()))));
+            EconomyResponse r = econ.depositPlayer(player, selectedAuction.getPrice());
+            if(r.transactionSuccess()) {
+                player.sendMessage(String.format("You were given %s and now have %s", econ.format(r.amount), econ.format(r.balance)));
+            } else {
+                player.sendMessage(String.format("An error occured: %s", r.errorMessage));
+            }
+
+
             // Remove the item from the sub-GUI
             clickedItem.setAmount(0);
-            AuctionPurchaseEvent purchaseEvent = new AuctionPurchaseEvent(player, selectedAuction, selectedAuction.getSeller());
-            Bukkit.getPluginManager().callEvent(purchaseEvent);
+            auctionHouse.removeAuction(selectedAuction);
+            auctionHouse.addHistoryAuction(selectedAuction);
+
+            //AuctionPurchaseEvent purchaseEvent = new AuctionPurchaseEvent(player, selectedAuction, selectedAuction.getSeller());
+            //Bukkit.getPluginManager().callEvent(purchaseEvent);
         } else {
             player.sendMessage(ChatColor.RED + "ᴛʜɪs ɪᴛᴇᴍ ɪs ɴᴏ ʟᴏɴɢᴇʀ ᴀᴠᴀɪʟᴀʙʟᴇ ғᴏʀ ᴘᴜʀᴄʜᴀsᴇ.");
         }

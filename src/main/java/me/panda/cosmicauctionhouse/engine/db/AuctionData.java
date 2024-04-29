@@ -72,9 +72,7 @@ public class AuctionData {
                 + "itemToAuction TEXT, "
                 + "price INTEGER, "
                 + "seller VARCHAR(255), "
-                + "bought BOOLEAN, "
-                + "buyer VARCHAR(255),"
-                + "timeLeft INTEGER"
+                + "buyer VARCHAR(255)"
                 + ")";
 
         try (PreparedStatement statement = connection.prepareStatement(createTableSQL)) {
@@ -85,16 +83,15 @@ public class AuctionData {
     }
 
     public List<Auction> getHistoryAuctions() {
-        List<Auction> auctions = new ArrayList<>();
+        List<Auction> historyAuctions = new ArrayList<>();
 
         String selectSQL = "SELECT * FROM HistoryAuctions";
 
         try (PreparedStatement statement = connection.prepareStatement(selectSQL);
              ResultSet resultSet = statement.executeQuery()) {
-
+            System.out.println("DEBUGGING HISTORY AUCTIONS: FETCHING");
             while (resultSet.next()) {
-
-                int id = resultSet.getInt("id");
+                int id = resultSet.getInt("id"); // Get the ID from the database
                 String itemToAuctionData = resultSet.getString("itemToAuction");
                 int price = resultSet.getInt("price");
                 String sellerName = resultSet.getString("seller");
@@ -106,16 +103,24 @@ public class AuctionData {
 
                 Auction auction = new Auction(itemToAuction, price, seller);
                 auction.setBuyer(buyer);
-                auctions.add(auction);
 
+                // Set the ID of the history auction retrieved from the database
+                auction.setId(id);
+
+                historyAuctions.add(auction);
+
+
+                System.out.println(auction);
             }
 
         } catch (SQLException e) {
             logger.error("Error retrieving history auctions from the database", e);
         }
 
-        return auctions;
+        return historyAuctions;
     }
+
+
     public List<Auction> getAuctions() {
         List<Auction> auctions = new ArrayList<>();
 
@@ -123,9 +128,9 @@ public class AuctionData {
 
         try (PreparedStatement statement = connection.prepareStatement(selectSQL);
              ResultSet resultSet = statement.executeQuery()) {
-
+            System.out.println("DEBUGGING REGULAR AUCTIONS: FETCHING");
             while (resultSet.next()) {
-                int id = resultSet.getInt("id");
+                int id = resultSet.getInt("id"); // Get the ID from the database
                 String itemToAuctionData = resultSet.getString("itemToAuction");
                 int price = resultSet.getInt("price");
                 String sellerName = resultSet.getString("seller");
@@ -143,9 +148,14 @@ public class AuctionData {
                 Auction auction = new Auction(itemToAuction, price, seller, timeLeft);
                 auction.setBuyer(buyer);
                 auction.setBought(bought);
-                auctions.add(auction);
                 auction.setTimeLeft(timeLeft);
 
+                // Set the ID of the auction
+                auction.setId(id);
+
+                auctions.add(auction);
+
+                System.out.println(auction);
             }
 
         } catch (SQLException e) {
@@ -155,46 +165,104 @@ public class AuctionData {
         return auctions;
     }
 
+    /* OLD
     public void saveHistoryAuctions(List<Auction> auctions) {
-        // Insert new data
-        String insertSQL = "INSERT OR REPLACE INTO HistoryAuctions (itemToAuction, price, seller, buyer) VALUES (?, ?, ?, ?);";
+        String insertSQL = "INSERT INTO HistoryAuctions (id, itemToAuction, price, seller, buyer) VALUES (?, ?, ?, ?, ?) \n" +
+                "ON CONFLICT(id) DO UPDATE SET itemToAuction=excluded.itemToAuction, price=excluded.price, seller=excluded.seller, buyer=excluded.buyer";
 
-        try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL)) {
+        try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+            System.out.println("DEBUGGING HISTORY AUCTIONS: SAVING");
             for (Auction auction : auctions) {
-                insertStatement.setString(1, ItemUtils.serializeItemStack(auction.getAuctionedItem()));
-                insertStatement.setInt(2, auction.getPrice());
-                insertStatement.setString(3, auction.getSeller().getName());
-                insertStatement.setString(4, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
+                System.out.println(auction);
+                insertStatement.setInt(1, auction.getId()); // Set the ID
+                insertStatement.setString(2, ItemUtils.serializeItemStack(auction.getAuctionedItem()));
+                insertStatement.setInt(3, auction.getPrice());
+                insertStatement.setString(4, auction.getSeller().getName());
+                insertStatement.setString(5, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
 
-                insertStatement.addBatch();
+                insertStatement.executeUpdate();
             }
-
-            insertStatement.executeBatch();
-
         } catch (SQLException e) {
             logger.warn("Problem saving the history auctions", e);
         }
     }
+
+
     public void saveAuctions(List<Auction> auctions) {
-        // Insert new data
-        String insertSQL = "INSERT OR REPLACE INTO Auctions (itemToAuction, price, seller, bought, buyer, timeLeft) VALUES (?, ?, ?, ?, ?, ?);";
+        String insertSQL = "INSERT INTO Auctions (id, itemToAuction, price, seller, bought, buyer, timeleft) VALUES (?, ?, ?, ?, ?, ?, ?) \n" +
+                "ON CONFLICT(id) DO UPDATE SET itemToAuction=excluded.itemToAuction, price=excluded.price, seller=excluded.seller, bought=excluded.bought, buyer=excluded.buyer, timeleft=excluded.timeleft";
 
-        try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL)) {
+        try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+            System.out.println("DEBUGGING REGULAR AUCTIONS: SAVING");
             for (Auction auction : auctions) {
-                insertStatement.setString(1, ItemUtils.serializeItemStack(auction.getAuctionedItem()));
-                insertStatement.setInt(2, auction.getPrice());
-                insertStatement.setString(3, String.valueOf(auction.getSeller().getUniqueId()));
-                insertStatement.setBoolean(4, auction.isBought());
-                insertStatement.setString(5, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
-                insertStatement.setLong(6, auction.getTimeLeft()); // Add the remaining time
+                System.out.println(auction.toString());
+                insertStatement.setInt(1, auction.getId()); // Set the ID
+                insertStatement.setString(2, ItemUtils.serializeItemStack(auction.getAuctionedItem()));
+                insertStatement.setInt(3, auction.getPrice());
+                insertStatement.setString(4, auction.getSeller().getName());
+                insertStatement.setBoolean(5, auction.isBought());
+                insertStatement.setString(6, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
+                insertStatement.setLong(7, auction.getTimeLeft());
 
-                insertStatement.addBatch();
+                insertStatement.executeUpdate();
             }
-
-            insertStatement.executeBatch();
-
         } catch (SQLException e) {
             logger.warn("Problem saving existing auctions", e);
         }
     }
+     */
+
+    public void removeAuction(int auctionId) {
+        String deleteSQL = "DELETE FROM Auctions WHERE id = ?";
+
+        try (PreparedStatement deleteStatement = connection.prepareStatement(deleteSQL)) {
+            deleteStatement.setInt(1, auctionId);
+            int rowsAffected = deleteStatement.executeUpdate();
+            if (rowsAffected == 0) {
+                System.out.println("No auction with ID " + auctionId + " found in the database.");
+            } else {
+                System.out.println("Auction with ID " + auctionId + " removed from the database.");
+            }
+        } catch (SQLException e) {
+            logger.warn("Problem removing auction", e);
+        }
+    }
+
+    public void saveAuction(Auction auction) {
+        String insertSQL = "INSERT INTO Auctions (id, itemToAuction, price, seller, bought, buyer, timeleft) VALUES (?, ?, ?, ?, ?, ?, ?) \n" +
+                "ON CONFLICT(id) DO UPDATE SET itemToAuction=excluded.itemToAuction, price=excluded.price, seller=excluded.seller, bought=excluded.bought, buyer=excluded.buyer, timeleft=excluded.timeleft";
+
+        try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+            insertStatement.setInt(1, auction.getId()); // Set the ID
+            insertStatement.setString(2, ItemUtils.serializeItemStack(auction.getAuctionedItem()));
+            insertStatement.setInt(3, auction.getPrice());
+            insertStatement.setString(4, auction.getSeller().getName());
+            insertStatement.setBoolean(5, auction.isBought());
+            insertStatement.setString(6, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
+            insertStatement.setLong(7, auction.getTimeLeft());
+
+            insertStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.warn("Problem saving auction", e);
+        }
+    }
+
+    public void saveHistoryAuction(Auction auction) {
+        String insertSQL = "INSERT INTO HistoryAuctions (id, itemToAuction, price, seller, buyer) VALUES (?, ?, ?, ?, ?) \n" +
+                "ON CONFLICT(id) DO UPDATE SET itemToAuction=excluded.itemToAuction, price=excluded.price, seller=excluded.seller, buyer=excluded.buyer";
+
+        try (PreparedStatement insertStatement = connection.prepareStatement(insertSQL, Statement.RETURN_GENERATED_KEYS)) {
+            insertStatement.setInt(1, auction.getId()); // Set the ID
+            insertStatement.setString(2, ItemUtils.serializeItemStack(auction.getAuctionedItem()));
+            insertStatement.setInt(3, auction.getPrice());
+            insertStatement.setString(4, auction.getSeller().getName());
+            insertStatement.setString(5, (auction.getBuyer() != null) ? auction.getBuyer().getName() : null);
+
+            insertStatement.executeUpdate();
+        } catch (SQLException e) {
+            logger.warn("Problem saving the history auction", e);
+        }
+    }
+
+
 }

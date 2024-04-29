@@ -25,7 +25,7 @@ public class AuctionPurchaseListener implements Listener {
         Auction auction = event.getAuction();
 
         if (!event.isCancelled()) {
-            auction.setBuyer(event.getBuyer());
+            //auction.setBuyer(event.getBuyer());
             auctionHouse.addHistoryAuction(auction);
 
             // Remove the item from the auction list

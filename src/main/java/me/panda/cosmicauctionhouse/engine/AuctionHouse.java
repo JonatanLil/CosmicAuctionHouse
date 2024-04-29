@@ -44,9 +44,9 @@ public class AuctionHouse {
     }
 
     public void closeConnection() {
-        if (!auctions.isEmpty()) {
-            db.saveAuctions(auctions);
-            db.saveHistoryAuctions(historyList);
+        if (!auctions.isEmpty() || !historyList.isEmpty()) {
+            //db.saveAuctions(auctions);
+            //db.saveHistoryAuctions(historyList);
             db.closeConnection();
         }
         else {
@@ -56,6 +56,7 @@ public class AuctionHouse {
     }
 
     public void addHistoryAuction(Auction auction) {
+        db.saveHistoryAuction(auction);
         historyList.add(auction);
     }
 
@@ -65,10 +66,12 @@ public class AuctionHouse {
 
 
     public void addAuction(Auction auction) {
+        db.saveAuction(auction);
         auctions.add(auction);
     }
 
     public void removeAuction(Auction auction) {
+        db.removeAuction(auction.getId());
         auctions.remove(auction);
     }
 
